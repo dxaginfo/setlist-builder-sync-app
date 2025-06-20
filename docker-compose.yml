@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_SOCKET_URL=http://localhost:8000
+    networks:
+      - setlist-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/setlist_builder
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your_jwt_secret
+      - JWT_EXPIRES_IN=1d
+      - JWT_REFRESH_SECRET=your_refresh_secret
+      - JWT_REFRESH_EXPIRES_IN=7d
+      - FRONTEND_URL=http://localhost:3000
+      - SPOTIFY_CLIENT_ID=your_spotify_client_id
+      - SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+      - SPOTIFY_REDIRECT_URI=http://localhost:8000/api/spotify/callback
+    networks:
+      - setlist-network
+    volumes:
+      - ./backend/logs:/app/logs
+
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=setlist_builder
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - setlist-network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - setlist-network
+
+networks:
+  setlist-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
