@@ -1,0 +1,127 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String             @id @default(uuid())
+  username        String             @unique
+  email           String             @unique
+  passwordHash    String
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  profileImageUrl String?
+  spotifyUserId   String?
+  spotifyConnected Boolean           @default(false)
+  songs           Song[]
+  setlists        Setlist[]
+  collaborations  Collaborator[]
+  performances    PerformanceHistory[]
+  spotifyTokens   SpotifyToken?
+}
+
+model Song {
+  id              String          @id @default(uuid())
+  userId          String
+  title           String
+  artist          String?
+  album           String?
+  key             String?
+  bpm             Int?
+  duration        Int
+  notes           String?
+  spotifyTrackId  String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  isPublic        Boolean         @default(false)
+  setlistSongs    SetlistSong[]
+  user            User            @relation(fields: [userId], references: [id])
+  tags            SongTag[]
+}
+
+model SongTag {
+  id              String       @id @default(uuid())
+  songId          String
+  name            String
+  type            String       // 'genre', 'mood', 'energy', etc.
+  song            Song         @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([songId, name, type])
+}
+
+model Setlist {
+  id              String             @id @default(uuid())
+  userId          String
+  name            String
+  description     String?
+  venue           String?
+  eventDate       DateTime?
+  duration        Int?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  isArchived      Boolean            @default(false)
+  isPublic        Boolean            @default(false)
+  user            User               @relation(fields: [userId], references: [id])
+  setlistSongs    SetlistSong[]
+  collaborators   Collaborator[]
+  performanceHistory PerformanceHistory[]
+}
+
+model SetlistSong {
+  id              String       @id @default(uuid())
+  setlistId       String
+  songId          String
+  position        Int
+  transitionNotes String?
+  customKey       String?
+  customDuration  Int?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  setlist         Setlist      @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+  song            Song         @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([setlistId, position])
+}
+
+model Collaborator {
+  id              String       @id @default(uuid())
+  setlistId       String
+  userId          String
+  permissionLevel String       // 'view', 'edit', 'admin'
+  createdAt       DateTime     @default(now())
+  setlist         Setlist      @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([setlistId, userId])
+}
+
+model SpotifyToken {
+  id              String       @id @default(uuid())
+  userId          String       @unique
+  accessToken     String
+  refreshToken    String
+  expiresAt       DateTime
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PerformanceHistory {
+  id              String       @id @default(uuid())
+  setlistId       String?
+  userId          String
+  venue           String?
+  performanceDate DateTime
+  notes           String?
+  rating          Int?
+  createdAt       DateTime     @default(now())
+  setlist         Setlist?     @relation(fields: [setlistId], references: [id], onDelete: SetNull)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
